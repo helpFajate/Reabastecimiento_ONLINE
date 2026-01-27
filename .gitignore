@@ -1,0 +1,7 @@
+# Ignorar entorno virtual y caché de Python
+venv/
+__pycache__/
+
+# Opcional: ignorar archivos temporales de tu editor
+*.log
+*.tmp
