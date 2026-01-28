@@ -1,63 +1,136 @@
 import pandas as pd 
 import numpy as np
+
 def redistribucion(lim, VenInv, ced):
+    """
+    Realiza la redistribución de inventario desde bodegas con exceso hacia bodegas
+    con mayor rotación de ventas, respetando un límite máximo por bodega.
 
-    ced.rename(columns={'Referencia_x':'Referencia','ColorAbreviatura_x':'ColorAbreviatura','DescripcionTalla_x':'DescripcionTalla'},inplace=True)
-    ced['SKU']=ced['Referencia'].str.strip() + ced['ColorAbreviatura'].str.strip() + ced['DescripcionTalla'].str.strip()
+    Parámetros:
+    lim    : límite máximo de unidades permitidas por SKU en cada bodega
+    VenInv : DataFrame con inventario y ventas por bodega
+    ced    : DataFrame con cantidades disponibles para redistribuir
 
-    VenInv.rename(columns={'Referencia_x':'Referencia','ColorAbreviatura_x':'ColorAbreviatura','DescripcionTalla_x':'DescripcionTalla'},inplace=True)
-    VenInv['SKU']=VenInv['Referencia'].str.strip() + VenInv['ColorAbreviatura'].str.strip() + VenInv['DescripcionTalla'].str.strip()
+    Retorna:
+    DataFrame con las cantidades a enviar por bodega y SKU
+    """
 
-    VenInv.sort_values(by=['Cantidad','Descripcion_Almacen_x','Referencia'],ascending=False,inplace=True)
+    # Normalización de nombres de columnas para trabajar con un mismo esquema
+    ced.rename(columns={
+        'Referencia_x':'Referencia',
+        'ColorAbreviatura_x':'ColorAbreviatura',
+        'DescripcionTalla_x':'DescripcionTalla'
+    }, inplace=True)
 
+    # Construcción del identificador único de producto (SKU)
+    ced['SKU'] = (
+        ced['Referencia'].str.strip() +
+        ced['ColorAbreviatura'].str.strip() +
+        ced['DescripcionTalla'].str.strip()
+    )
+
+    VenInv.rename(columns={
+        'Referencia_x':'Referencia',
+        'ColorAbreviatura_x':'ColorAbreviatura',
+        'DescripcionTalla_x':'DescripcionTalla'
+    }, inplace=True)
+
+    VenInv['SKU'] = (
+        VenInv['Referencia'].str.strip() +
+        VenInv['ColorAbreviatura'].str.strip() +
+        VenInv['DescripcionTalla'].str.strip()
+    )
+
+    # Ordenar por ventas, bodega y referencia
+    VenInv.sort_values(
+        by=['Cantidad','Descripcion_Almacen_x','Referencia'],
+        ascending=False,
+        inplace=True
+    )
+
+    # Inicializar columnas de control
     VenInv['Cantidad Enviar'] = 0
-    VenInv['Cant Original']=VenInv['CantidadExistencia']
+    VenInv['Cant Original'] = VenInv['CantidadExistencia']
 
-    df2=VenInv.sort_values(by=['Cantidad'], ascending=False)
+    # Copia ordenada por ventas
+    df2 = VenInv.sort_values(by=['Cantidad'], ascending=False)
 
-    df2['con']=df2['Descripcion_Almacen_x'].str.strip() + df2['Referencia'].str.strip() + df2['ColorAbreviatura'].str.strip()+df2['DescripcionTalla'].str.strip()
-    ced['con']=ced['Descripcion_Almacen_x'].str.strip() + ced['Referencia'].str.strip() + ced['ColorAbreviatura'].str.strip()+ced['DescripcionTalla'].str.strip()
+    # Clave compuesta por bodega + producto
+    df2['con'] = (
+        df2['Descripcion_Almacen_x'].str.strip() +
+        df2['Referencia'].str.strip() +
+        df2['ColorAbreviatura'].str.strip() +
+        df2['DescripcionTalla'].str.strip()
+    )
 
-    df3=df2.groupby(['con'])[['Cantidad']].sum().reset_index()
+    ced['con'] = (
+        ced['Descripcion_Almacen_x'].str.strip() +
+        ced['Referencia'].str.strip() +
+        ced['ColorAbreviatura'].str.strip() +
+        ced['DescripcionTalla'].str.strip()
+    )
 
-    df2=df2.merge(df3, on='con', how='left')
+    # Agrupación por clave para consolidar ventas
+    df3 = df2.groupby(['con'])[['Cantidad']].sum().reset_index()
 
-    # Iterar sobre cada fila de ced
+    # Unión con el consolidado
+    df2 = df2.merge(df3, on='con', how='left')
+
+    # ============================
+    # PROCESO DE REDISTRIBUCIÓN
+    # ============================
+
+    # Iterar sobre cada fila del DataFrame ced (origen de unidades)
     for index, row in ced.iterrows():
         cantidad_a_distribuir = row['CantidadExistencia_y']
         sku = row['SKU']
 
-        # Obtener todas las bodegas con este SKU, ordenadas por mayor número de ventas
-        matching_rows = df2[df2['SKU'] == sku].sort_values(by='Cantidad_x', ascending=False)
+        # Filtrar bodegas que venden ese SKU, ordenadas por mayor rotación
+        matching_rows = df2[df2['SKU'] == sku].sort_values(
+            by='Cantidad_x',
+            ascending=False
+        )
 
-        # Iterar sobre las bodegas disponibles hasta distribuir todas las unidades
+        # Distribuir unidades en las bodegas disponibles
         for bodega_index, bodega_row in matching_rows.iterrows():
             if cantidad_a_distribuir <= 0:
-                break  # Si ya no hay unidades, salimos
+                break  # No hay más unidades por distribuir
 
-            # Obtener el espacio disponible en la bodega respetando el límite `lim`
-            espacio_disponible = max(0, lim - (df2.at[bodega_index, 'Cantidad Enviar'] + df2.at[bodega_index, 'Cant Original']))
+            # Espacio disponible respetando el límite por bodega
+            espacio_disponible = max(
+                0,
+                lim - (df2.at[bodega_index, 'Cantidad Enviar'] +
+                       df2.at[bodega_index, 'Cant Original'])
+            )
             
             if espacio_disponible > 0:
-                # Determinar cuántas unidades podemos asignar
+                # Cantidad a asignar sin superar límite ni disponibilidad
                 asignar = min(cantidad_a_distribuir, espacio_disponible)
                 
-                # Asignar unidades a la bodega
+                # Registrar asignación en la bodega
                 df2.at[bodega_index, 'Cantidad Enviar'] += asignar
                 
-                # Restar del total disponible en `ced`
+                # Descontar del stock disponible en ced
                 ced.at[index, 'CantidadExistencia_y'] -= asignar
                 cantidad_a_distribuir -= asignar
 
-    # Reiniciar índices de los dataframes
+    # Reinicio de índices tras el procesamiento
     ced.reset_index(drop=True, inplace=True)
     df2.reset_index(drop=True, inplace=True)
 
-    df2.rename(columns={'Descripcion_Almacen_x':'almacen', 'ColorAbreviatura':'color','DescripcionTalla':'talla','Cantidad_x':'ventas'},inplace=True)
+    # Renombrar columnas para salida final
+    df2.rename(columns={
+        'Descripcion_Almacen_x':'almacen',
+        'ColorAbreviatura':'color',
+        'DescripcionTalla':'talla',
+        'Cantidad_x':'ventas'
+    }, inplace=True)
 
-    df2.drop(columns={'con','Cantidad_y','CantidadExistencia'}, inplace =True)
+    # Eliminación de columnas auxiliares
+    df2.drop(columns={'con','Cantidad_y','CantidadExistencia'}, inplace=True)
 
-    df2=df2[df2['Cantidad Enviar']>0]
+    # Filtrar únicamente registros con cantidad asignada
+    df2 = df2[df2['Cantidad Enviar'] > 0]
 
     print('Redistribución finalizada ✅')
 

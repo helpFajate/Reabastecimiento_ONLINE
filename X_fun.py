@@ -1,39 +1,53 @@
-
 from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-#Conectar con BD Reportes
+# ============================================================
+# FUNCIONES DE CONEXIÓN A BASES DE DATOS
+# ============================================================
+
+# Conexión a la base de datos de Reportes (Data Warehouse)
 def conectar_sqlalchemy():
     try:
+        # Cadena de conexión a SQL Server usando autenticación integrada
         connection_string = "mssql+pyodbc://amaterasu\\siesa/reportes?trusted_connection=yes&driver=SQL+Server"
         engine = create_engine(connection_string)
         print('Conexión exitosa')
         return engine
     except Exception as ex:
+        # Manejo de errores en la conexión
         print(f'Error en la conexión: {ex}')
         return None
     
-#Conectar con BD UnoEE
+
+# Conexión a la base de datos operativa UnoEE
 def conectar_sql():
     try:
-        # Cadena de conexión usando SQLAlchemy
+        # Cadena de conexión a SQL Server usando autenticación integrada
         connection_string = "mssql+pyodbc://amaterasu\\siesa/UnoEE?trusted_connection=yes&driver=SQL+Server"
         engine = create_engine(connection_string)
         print('Conexión exitosa')
         return engine
     except Exception as ex:
+        # Manejo de errores en la conexión
         print(f'Error en la conexión: {ex}')
         return None
 
-# Obtener ventas
+
+# ============================================================
+# FUNCIONES DE EXTRACCIÓN DE DATOS
+# ============================================================
+
+# Obtener información histórica de ventas
 def obtener_ventas():
     engine = conectar_sqlalchemy()
     if engine:
         try:
-            primer_dia_ano = datetime(datetime.now().year-1, 1, 1).strftime('%Y-%m-%d')
+            # Se calcula el primer día del año anterior para filtrar las ventas
+            primer_dia_ano = datetime(datetime.now().year - 1, 1, 1).strftime('%Y-%m-%d')
             print(primer_dia_ano)
 
+            # Consulta SQL que integra ventas, productos y almacenes
             query = f"""
             SELECT * 
             FROM FactVentas 
@@ -44,18 +58,24 @@ def obtener_ventas():
 
             df_ventas = pd.read_sql(text(query), engine)
             return df_ventas
+
         except Exception as ex:
+            # Manejo de errores durante la ejecución de la consulta
             print(f'Error al ejecutar la consulta: {ex}')
             return None
+
         finally:
-            engine.dispose()  # Cierra la conexión
+            # Cierre explícito de la conexión
+            engine.dispose()
     else:
         return None
 
-# Obtener inventarios  
+
+# Obtener inventario general desde el sistema UnoEE
 def obtener_inv():
     engine = conectar_sql()
     if engine:
+        # Ejecución del procedimiento almacenado de inventarios
         query = f'''exec sp_cons_inv_exitencias @p_cia=1,
                         @p_tipo_inv=N'',
                         @p_grupo=N'',
@@ -78,12 +98,13 @@ def obtener_inv():
                         @p_ind_ubica_inac=0'''
         
         rem = pd.read_sql(query, engine)
-        engine.dispose()  # Cierra la conexión
+        engine.dispose()
         return rem
     else:
         return None
     
-# Obtener datos de productos
+
+# Obtener catálogo de productos
 def obtener_productos():
     engine = conectar_sqlalchemy()
     if engine:
@@ -94,15 +115,18 @@ def obtener_productos():
             """
             df_productos = pd.read_sql(text(query), engine)
             return df_productos
+
         except Exception as ex:
             print(f'Error al ejecutar la consulta: {ex}')
             return None
+
         finally:
             engine.dispose()
     else:
         return None
 
-# Obtener datos de almacenes
+
+# Obtener catálogo de almacenes
 def obtener_dim_almacenes():
     engine = conectar_sqlalchemy()
     if engine:
@@ -113,15 +137,18 @@ def obtener_dim_almacenes():
             """
             df_almacenes = pd.read_sql(text(query), engine)
             return df_almacenes
+
         except Exception as ex:
             print(f'Error al ejecutar la consulta: {ex}')
             return None
+
         finally:
             engine.dispose()
     else:
         return None
     
-# Obtener datos de transferencias en tránsito
+
+# Obtener transferencias en tránsito entre bodegas
 def obtener_datos_tran():
     engine = conectar_sql()
     if engine:
@@ -132,11 +159,13 @@ def obtener_datos_tran():
         @p_id_lista_precio=NULL
         '''        
         rem = pd.read_sql(query, engine)
-        engine.dispose()  # Cierra la conexión
+        engine.dispose()
         return rem
     else:
         return None
     
+
+# Obtener inventario de una bodega específica
 def obtener_inv_be(bodega):
     engine = conectar_sql()
     if engine:
@@ -162,7 +191,7 @@ def obtener_inv_be(bodega):
                         @p_ind_ubica_inac=0'''
         
         rem = pd.read_sql(query, engine)
-        engine.dispose()  # Cierra la conexión
+        engine.dispose()
         return rem
     else:
         return None
