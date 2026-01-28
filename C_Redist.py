@@ -1,3 +1,16 @@
+# ============================================================
+# Autor y mantenimiento
+#
+# Área de Sistemas — Vivell S.A.S
+#
+# Desarrollado por:
+#
+# Juan Sebastián Jaramillo (Ing. Industrial) aux.bi1@vivell.co
+# Melina Muñoz M. (Desarrolladora de Software) help.desk@vivell.co
+#
+# Donde la visión estratégica y la implementación técnica se unen.
+# ============================================================
+
 import pandas as pd 
 import numpy as np
 

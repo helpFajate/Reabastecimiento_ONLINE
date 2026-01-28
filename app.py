@@ -1,15 +1,20 @@
-"""
-Autor y mantenimiento
+# ============================================================
+# Autor y mantenimiento
+#
+# Área de Sistemas — Vivell S.A.S
+#
+# Desarrollado por:
+#
+# Juan Sebastián Jaramillo (Ing. Industrial) aux.bi1@vivell.co
+# Melina Muñoz M. (Desarrolladora de Software) help.desk@vivell.co
+#
+# Donde la visión estratégica y la implementación técnica se unen.
+# ============================================================
 
-Área de Sistemas — Vivell S.A.S
+import pandas as pd
+from datetime import datetime
+...
 
-Desarrollado por:
-
-Juan Sebastián Jaramillo (Ing. Industrial) aux.bi1@vivell.co  
-Melina Muñoz M. (Desarrolladora de Software) help.desk@vivell.co  
-
-Donde la visión estratégica y la implementación técnica se unen.
-"""
 
 from flask import Flask, jsonify, send_file, send_from_directory, request
 from flask_cors import CORS

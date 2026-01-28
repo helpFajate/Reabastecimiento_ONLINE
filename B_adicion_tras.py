@@ -1,15 +1,19 @@
-"""
-Autor y mantenimiento
+# ============================================================
+# Autor y mantenimiento
+#
+# Área de Sistemas — Vivell S.A.S
+#
+# Desarrollado por:
+#
+# Juan Sebastián Jaramillo (Ing. Industrial) aux.bi1@vivell.co
+# Melina Muñoz M. (Desarrolladora de Software) help.desk@vivell.co
+#
+# Donde la visión estratégica y la implementación técnica se unen.
+# ============================================================
 
-Área de Sistemas — Vivell S.A.S
-
-Desarrollado por:
-
-Juan Sebastián Jaramillo (Ing. Industrial) aux.bi1@vivell.co  
-Melina Muñoz M. (Desarrolladora de Software) help.desk@vivell.co  
-
-Donde la visión estratégica y la implementación técnica se unen.
-"""
+import pandas as pd
+from datetime import datetime
+...
 
 def transferencias_trasito(ven_inv):
     import pandas as pd
